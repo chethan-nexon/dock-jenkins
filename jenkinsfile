@@ -1,25 +1,40 @@
 pipeline {
     agent any
+
     tools {
         jdk "java-21"
         maven "maven"
     }
+
     stages {
-        stage ('git checkout') {
+        stage('git checkout') {
             steps {
                 git branch: 'main', url: 'https://github.com/chethan-nexon/dock-jenkins.git'
             }
-        } 
-        stage ('compile'){
+        }
+
+        stage('compile') {
             steps {
                 sh "mvn compile"
             }
         }
-        stage ('build') {
+
+        stage('build') {
             steps {
                 sh "mvn clean install"
             }
         }
+    }
+
+    post {
+        success {
+            echo '✅ Build completed successfully!'
+        }
+        failure {
+            echo '❌ Build failed. Check the logs for details.'
+        }
+    }
+}
 
           
     }
