@@ -1,37 +1,63 @@
-pipeline {
+pipeline{
     agent any
 
     tools {
-        jdk "java-21"
-        maven "maven"
+        jdk 'JDK21'
+        maven 'Maven'
     }
 
-    stages {
-        stage('git checkout') {
+    stages{
+        stage('Git checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/chethan-nexon/dock-jenkins.git'
+                git branch: 'main', url: 'https://github.com/chethan-nexon/dock-jenkins.git'   
+            }
+        }
+        stage('Compile') {
+            steps {
+                    sh 'mvn compile'
+            }         
+        }
+        stage('Build'){
+            steps {
+                    sh 'mvn clean install'
+            }
+        }
+        stage('Build Docker Image') {
+            steps {
+                    sh 'docker build -t chethan422/project:1 .'
             }
         }
 
-        stage('compile') {
+        stage('Docker image scan'){
             steps {
-                sh "mvn compile"
+                    sh 'trivy image --format table -o trivy-image-report.html chethan422/project:1'
+            }
+        }
+        stage('Containersation'){
+            steps {
+                    sh '''
+                    docker stop c1 || true
+                    docker rm c1 || true
+                    docker run -it -d --name c1 -p 9000:8080 chethan422/project:1
+                    '''
+            }
+        }
+        stage('Login to Docker Hub'){
+            steps {
+                script {
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub-credential', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
+                        sh 'echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin'
+                    }
+                }
             }
         }
 
-        stage('build') {
+        stage('Push Docker Image to Docker Hub') {
             steps {
-                sh "mvn clean install"
+                sh 'docker push chethan422/project:1'
             }
+            
         }
-    }
 
-    post {
-        success {
-            echo '✅ Build completed successfully!'
-        }
-        failure {
-            echo '❌ Build failed. Check the logs for details.'
-        }
     }
 }
